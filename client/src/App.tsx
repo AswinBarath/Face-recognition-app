@@ -43,7 +43,7 @@ function App() {
   }
 
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="min-h-screen bg-gray-50">
         {user && <Navbar user={user} onLogout={() => setUser(null)} />}
         <main className="container mx-auto px-4 py-8">

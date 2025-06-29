@@ -98,32 +98,39 @@ class FaceDetectionService {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Set canvas size to match displayed image size
+    const width = imageElement.clientWidth;
+    const height = imageElement.clientHeight;
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
 
-    // Draw image
-    ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
 
     // Draw face boxes
     faces.forEach((face) => {
-      const x = face.x * canvas.width;
-      const y = face.y * canvas.height;
-      const width = face.width * canvas.width;
-      const height = face.height * canvas.height;
+      const x = face.x * width;
+      const y = face.y * height;
+      const w = face.width * width;
+      const h = face.height * height;
 
       // Draw box
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3;
-      ctx.strokeRect(x, y, width, height);
+      ctx.strokeRect(x, y, w, h);
 
-      // Draw confidence score
+      // Draw confidence score with background
+      const confText = `${Math.round(face.confidence * 100)}%`;
+      ctx.font = 'bold 14px Arial';
+      ctx.textBaseline = 'top';
+      const textWidth = ctx.measureText(confText).width;
+      const textHeight = 18;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(x, y - textHeight, textWidth + 8, textHeight);
       ctx.fillStyle = '#ef4444';
-      ctx.font = '16px Arial';
-      ctx.fillText(
-        `${Math.round(face.confidence * 100)}%`,
-        x,
-        y - 10
-      );
+      ctx.fillText(confText, x + 4, y - textHeight + 2);
     });
   }
 }

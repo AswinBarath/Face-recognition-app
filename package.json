@@ -9,7 +9,13 @@
     "client": "cd client && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "build": "cd client && npm run build",
-    "start": "cd server && npm start"
+    "start": "cd server && npm start",
+    "setup": "node setup.js",
+    "download-models": "node download-models.js",
+    "test": "cd server && npm test",
+    "test:watch": "cd server && npm run test:watch",
+    "db:setup": "psql -h localhost -U postgres -c \"CREATE DATABASE face_recognition_db;\" && psql -h localhost -U postgres -d face_recognition_db -f database/schema.sql",
+    "clean": "rm -rf node_modules server/node_modules client/node_modules server/uploads"
   },
   "keywords": ["face-recognition", "pern-stack", "react", "nodejs", "postgresql"],
   "author": "",

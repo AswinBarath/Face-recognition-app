@@ -45,19 +45,8 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({ user }) => {
     clearResults();
 
     try {
-      // Use the proxy endpoint to avoid CORS issues
-      const proxyUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/faces/proxy-image?url=${encodeURIComponent(imageUrl)}`;
-      
-      // First, try to load the image through the proxy to validate the URL
-      const img = new Image();
-      
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = () => reject(new Error('Failed to load image from URL'));
-        img.src = proxyUrl;
-      });
-
-      setImagePreview(proxyUrl);
+      // Set the image preview directly (let the browser handle CORS)
+      setImagePreview(imageUrl);
       
       // Call the API for face detection
       const result: FaceDetectionResult = await faceAPI.detectFromUrl(imageUrl);
@@ -238,117 +227,135 @@ const FaceDetection: React.FC<FaceDetectionProps> = ({ user }) => {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg font-medium text-gray-900 mb-2">
-                {selectedFile ? selectedFile.name : 'Drop an image here or click to browse'}
+              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">
+                Drag & drop an image here, or{' '}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  browse files
+                </button>
               </p>
               <p className="text-sm text-gray-500">
-                Supports JPG, PNG, GIF, and WebP formats
+                Supports JPG, PNG, GIF, WebP (max 10MB)
               </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
             </div>
-            
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            
+
             {selectedFile && (
-              <button
-                onClick={handleFileUpload}
-                disabled={loading}
-                className="btn btn-primary w-full"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
-                ) : (
-                  <>
-                    <Camera className="w-4 h-4 mr-2" />
-                    Detect Faces
-                  </>
-                )}
-              </button>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <Upload className="w-5 h-5 text-primary-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{selectedFile.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleFileUpload}
+                  disabled={loading}
+                  className="btn btn-primary"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4 mr-2" />
+                      Detect Faces
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Error/Success Messages */}
+      {/* Error and Success Messages */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex">
-            <AlertCircle className="h-5 w-5 text-red-400" />
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
+        <div className="card bg-red-50 border-red-200">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <p className="text-red-700">{error}</p>
           </div>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex">
-            <CheckCircle className="h-5 w-5 text-green-400" />
-            <div className="ml-3">
-              <p className="text-sm text-green-700">{success}</p>
-            </div>
+        <div className="card bg-green-50 border-green-200">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <p className="text-green-700">{success}</p>
           </div>
         </div>
       )}
 
-      {/* Image Display and Results */}
+      {/* Results */}
       {imagePreview && (
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Detection Results</h3>
-          
-          <div className="relative inline-block">
+          <div className="image-container" style={{ position: 'relative', display: 'inline-block' }}>
             <img
               ref={imageRef}
               src={imagePreview}
-              alt="Uploaded"
+              alt="Uploaded image"
               className="max-w-full h-auto rounded-lg"
-              style={{ display: 'none' }}
               onLoad={() => {
-                if (imageRef.current && canvasRef.current) {
-                  canvasRef.current.width = imageRef.current.naturalWidth;
-                  canvasRef.current.height = imageRef.current.naturalHeight;
+                if (imageRef.current && canvasRef.current && detectedFaces.length > 0) {
+                  faceDetectionService.drawFaceBoxes(canvasRef.current, imageRef.current, detectedFaces);
+                } else if (canvasRef.current) {
+                  // Clear canvas if no faces
                   const ctx = canvasRef.current.getContext('2d');
-                  if (ctx) {
-                    ctx.drawImage(imageRef.current, 0, 0);
-                  }
+                  if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
                 }
               }}
+              style={{ display: 'block' }}
             />
             <canvas
               ref={canvasRef}
-              className="face-detection-canvas max-w-full h-auto"
+              className="face-canvas"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                pointerEvents: 'none',
+                maxWidth: '100%',
+                height: 'auto',
+                borderRadius: '0.5rem',
+              }}
             />
           </div>
 
           {detectedFaces.length > 0 && (
-            <div className="mt-6">
-              <h4 className="text-md font-semibold text-gray-900 mb-3">
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-900 mb-2">
                 Detected Faces: {detectedFaces.length}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {detectedFaces.map((face, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
-                        Face #{face.id}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {Math.round(face.confidence * 100)}% confidence
-                      </span>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-600">
-                      <p>Position: ({Math.round(face.x * 100)}%, {Math.round(face.y * 100)}%)</p>
-                      <p>Size: {Math.round(face.width * 100)}% × {Math.round(face.height * 100)}%</p>
-                    </div>
+                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-900">
+                      Face #{face.id}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Confidence: {Math.round(face.confidence * 100)}%
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Position: ({Math.round(face.x * 100)}%, {Math.round(face.y * 100)}%)
+                    </p>
                   </div>
                 ))}
               </div>

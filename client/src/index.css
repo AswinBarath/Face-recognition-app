@@ -40,10 +40,60 @@
   .face-box {
     @apply absolute border-2 border-red-500 bg-red-500 bg-opacity-20;
   }
+  
+  .upload-area {
+    @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center transition-all duration-200;
+  }
+  
+  .upload-area.dragover {
+    @apply border-primary-500 bg-primary-50;
+  }
+  
+  .upload-area:hover {
+    @apply border-gray-400;
+  }
+  
+  .image-container {
+    @apply relative inline-block max-w-full;
+  }
+  
+  .face-canvas {
+    @apply absolute top-0 left-0 pointer-events-none;
+  }
+  
+  .loading-spinner {
+    @apply animate-spin rounded-full border-2 border-gray-300 border-t-primary-600;
+  }
+  
+  .stat-card {
+    @apply bg-white rounded-lg p-6 shadow-sm border border-gray-200;
+  }
+  
+  .stat-number {
+    @apply text-3xl font-bold text-gray-900;
+  }
+  
+  .stat-label {
+    @apply text-sm font-medium text-gray-600 uppercase tracking-wide;
+  }
 }
 
 @layer utilities {
   .text-gradient {
     @apply bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent;
   }
+  
+  .primary-50 { background-color: #eff6ff; }
+  .primary-100 { background-color: #dbeafe; }
+  .primary-500 { background-color: #3b82f6; }
+  .primary-600 { background-color: #2563eb; }
+  .primary-700 { background-color: #1d4ed8; }
+  
+  .text-primary-600 { color: #2563eb; }
+  .text-primary-700 { color: #1d4ed8; }
+  
+  .border-primary-500 { border-color: #3b82f6; }
+  .border-primary-600 { border-color: #2563eb; }
+  
+  .focus\:ring-primary-500:focus { --tw-ring-color: #3b82f6; }
 } 

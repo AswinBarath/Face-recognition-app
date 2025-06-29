@@ -42,52 +42,6 @@ const upload = multer({
   }
 });
 
-// @route   GET /api/faces/proxy-image
-// @desc    Proxy external images to avoid CORS issues
-// @access  Public
-router.get('/proxy-image', async (req, res) => {
-  try {
-    const { url } = req.query;
-    
-    if (!url) {
-      return res.status(400).json({ message: 'Image URL is required' });
-    }
-
-    // Validate URL
-    try {
-      new URL(url);
-    } catch (error) {
-      return res.status(400).json({ message: 'Invalid URL format' });
-    }
-
-    // Download image
-    const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    });
-
-    // Set appropriate headers
-    res.set({
-      'Content-Type': response.headers['content-type'] || 'image/jpeg',
-      'Content-Length': response.headers['content-length'],
-      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
-
-    // Send the image
-    res.send(response.data);
-
-  } catch (error) {
-    console.error('Image proxy error:', error);
-    res.status(500).json({ message: 'Failed to proxy image' });
-  }
-});
-
 // @route   POST /api/faces/detect
 // @desc    Detect faces in uploaded image or URL
 // @access  Private
@@ -125,7 +79,7 @@ router.post('/detect', auth, async (req, res) => {
     // like Clarifai, AWS Rekognition, or Google Cloud Vision
     
     // Simulate face detection (replace with actual API call)
-    const faceDetectionResult = await simulateFaceDetection(processedImage);
+    const faceDetectionResult = await detectFacesWithClarifai(processedImage);
     
     const processingTime = Date.now() - startTime;
 
@@ -176,7 +130,7 @@ router.post('/upload', auth, upload.single('image'), async (req, res) => {
       .toBuffer();
 
     // Simulate face detection
-    const faceDetectionResult = await simulateFaceDetection(processedImage);
+    const faceDetectionResult = await detectFacesWithClarifai(processedImage);
     
     const processingTime = Date.now() - startTime;
 
@@ -296,7 +250,70 @@ router.get('/stats', auth, async (req, res) => {
   }
 });
 
-// Simulate face detection (replace with actual API integration)
+// Replace the simulateFaceDetection function with real API integration
+async function detectFacesWithClarifai(imageBuffer) {
+  try {
+    // You'll need to sign up for a free Clarifai account and get an API key
+    // https://www.clarifai.com/
+    const CLARIFAI_API_KEY = process.env.CLARIFAI_API_KEY;
+    
+    if (!CLARIFAI_API_KEY) {
+      throw new Error('Clarifai API key not configured');
+    }
+
+    // Convert buffer to base64
+    const base64Image = imageBuffer.toString('base64');
+
+    const response = await axios.post(
+      'https://api.clarifai.com/v2/models/face-detection/outputs',
+      {
+        user_app_id: {
+          user_id: 'clarifai',
+          app_id: 'main'
+        },
+        inputs: [
+          {
+            data: {
+              image: {
+                base64: base64Image
+              }
+            }
+          }
+        ]
+      },
+      {
+        headers: {
+          'Authorization': `Key ${CLARIFAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const regions = response.data.outputs[0].data.regions || [];
+    const faces = regions.map((region, index) => {
+      const boundingBox = region.region_info.bounding_box;
+      return {
+        id: index + 1,
+        x: boundingBox.left_col,
+        y: boundingBox.top_row,
+        width: boundingBox.right_col - boundingBox.left_col,
+        height: boundingBox.bottom_row - boundingBox.top_row,
+        confidence: region.value || 0.9
+      };
+    });
+
+    return {
+      faceCount: faces.length,
+      faces
+    };
+  } catch (error) {
+    console.error('Clarifai API error:', error);
+    // Fallback to simulation if API fails
+    return await simulateFaceDetection(imageBuffer);
+  }
+}
+
+// Keep the simulation as fallback
 async function simulateFaceDetection(imageBuffer) {
   // This is a simulation - replace with actual face detection API
   // For example: Clarifai, AWS Rekognition, Google Cloud Vision
